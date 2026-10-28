@@ -1,0 +1,61 @@
+name: livestock-ai-agent-l7-pv-20261027
+
+services:
+  db:
+    image: mysql:8.0.46
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE in the private environment file}
+      MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in the private environment file}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in the private environment file}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the private environment file}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 --silent",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: demo
+      AGENT_MODE: ${AGENT_MODE:-mock}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the private environment file}
+      DATABASE_HOST: db
+      DATABASE_PORT: "3306"
+      DATABASE_NAME: ${MYSQL_DATABASE}
+      DATABASE_USER: ${MYSQL_USER}
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD}
+      DEMO_DATABASE_NAME: ${MYSQL_DATABASE}
+      DEMO_DATABASE_SERVER_UUID: ${DEMO_DATABASE_SERVER_UUID:-}
+      DEMO_DATABASE_ATTESTATION: ${DEMO_DATABASE_ATTESTATION:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5187:5000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health/live', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  mysql_data:

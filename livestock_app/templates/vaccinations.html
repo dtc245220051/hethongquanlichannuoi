@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Lịch tiêm phòng{% endblock %}
+{% block content %}
+<section class="page-heading"><div><span class="eyebrow">Lịch dự kiến &amp; kết quả</span><h1>Tiêm phòng</h1><p>Lịch dự kiến không đồng nghĩa đã tiêm. Chỉ kết quả thực tế mới ghi nhận trạng thái đã thực hiện.</p></div></section>
+<section class="panel">
+  <div class="panel-heading"><h2>Lịch tiêm</h2><div class="legend"><span class="badge badge-danger">Quá hạn</span><span class="badge badge-info">Đã lên lịch</span><span class="badge badge-muted">Đã hủy</span></div></div>
+  {% if schedules %}
+  <div class="table-wrap"><table><thead><tr><th>Lịch / vaccine</th><th>Đối tượng</th><th>Thời điểm ({{ g.farm.timezone }})</th><th>Trạng thái lịch</th><th>Kết quả</th></tr></thead><tbody>
+  {% for schedule in schedules %}
+  <tr>
+    <td>{{ display_labels.schedules.get(schedule.id, 'Lịch tiêm phòng') }} · {{ schedule.vaccine_name }}</td>
+    <td>{{ display_labels.animals.get(schedule.animal_id, 'Vật nuôi') if schedule.animal_id else display_labels.herds.get(schedule.herd_id, 'Đàn/lô') }}</td>
+    <td>{{ local_datetime(schedule.due_at) }}</td>
+    <td>{% if schedule.status == 'cancelled' %}<span class="badge badge-muted">Đã hủy</span>{% elif outcome_by_schedule.get(schedule.id) == 'administered' %}<span class="badge badge-success">Đã thực hiện</span>{% elif schedule.status == 'scheduled' and schedule.due_at < now.replace(tzinfo=None) %}<span class="badge badge-danger">Quá hạn · {{ {'not_performed':'chưa thực hiện','postponed':'đã hoãn','needs_verification':'cần xác minh'}.get(outcome_by_schedule.get(schedule.id), 'chưa xác minh') }}</span>{% elif outcome_by_schedule.get(schedule.id) %}<span class="badge badge-warning">{{ {'not_performed':'Chưa thực hiện','postponed':'Đã hoãn','needs_verification':'Cần xác minh'}.get(outcome_by_schedule.get(schedule.id), outcome_by_schedule.get(schedule.id)) }}</span>{% else %}<span class="badge badge-info">Đã lên lịch</span>{% endif %}</td>
+    <td>{% if schedule.id in outcome_schedule_ids %}<span class="badge badge-success">Đã có kết quả · không hỗ trợ sửa</span>{% elif schedule.status == 'scheduled' and g.membership.role != 'veterinarian' %}<form method="post" class="inline-form outcome-form"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="record_outcome"><input type="hidden" name="schedule_id" value="{{ schedule.id }}"><select name="outcome"><option value="administered">Đã thực hiện</option><option value="not_performed">Chưa thực hiện</option><option value="postponed">Hoãn</option><option value="needs_verification">Cần xác minh</option></select><input type="datetime-local" name="occurred_at" aria-label="Thời điểm thực tế (bắt buộc nếu đã tiêm)"><input name="notes" placeholder="Ghi chú" maxlength="1000"><button class="button button-primary button-small">Ghi kết quả</button></form>{% endif %}</td>
+  </tr>
+  {% if g.membership.role in ['owner', 'manager'] and schedule.status == 'scheduled' %}
+  <tr class="sub-row"><td colspan="5"><form method="post" class="inline-form schedule-edit-form"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="update_schedule"><input type="hidden" name="schedule_id" value="{{ schedule.id }}"><input name="vaccine_name" value="{{ schedule.vaccine_name }}" aria-label="Tên vaccine" required maxlength="160"><input type="datetime-local" name="due_at" value="{{ local_datetime_input(schedule.due_at) }}" aria-label="Thời điểm đến hạn" required><select name="status"><option value="scheduled">Đang lên lịch</option><option value="cancelled">Hủy lịch</option></select><button class="button button-quiet button-small">Cập nhật lịch</button></form></td></tr>
+  {% endif %}
+  {% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="empty-state"><span class="empty-icon">◷</span><h3>Chưa có lịch tiêm</h3><p>Lịch dự kiến được tạo riêng, không tạo kết quả thực tế.</p></div>{% endif %}
+</section>
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Kết quả thực tế</span><h2>Lịch sử ghi nhận</h2></div></div>
+  {% if outcomes %}<div class="table-wrap"><table><thead><tr><th>Lịch tiêm</th><th>Kết quả</th><th>Thời điểm thực tế</th><th>Ghi chú</th></tr></thead><tbody>
+  {% for outcome in outcomes %}<tr><td>{{ display_labels.schedules.get(outcome.schedule_id, 'Lịch tiêm phòng') }}</td><td><span class="badge badge-{{ 'success' if outcome.outcome == 'administered' else 'warning' }}">{{ {'administered':'Đã thực hiện','not_performed':'Chưa thực hiện','postponed':'Hoãn','needs_verification':'Cần xác minh'}.get(outcome.outcome, outcome.outcome) }}</span></td><td>{{ local_datetime(outcome.occurred_at) if outcome.occurred_at else '—' }}</td><td>{{ outcome.notes or '—' }}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<div class="empty-inline">Chưa có kết quả thực tế. Lịch quá hạn vẫn chỉ là lịch chưa xác minh.</div>{% endif %}
+</section>
+{% if g.membership.role in ['owner', 'manager'] %}
+<section class="panel panel-narrow">
+  <div class="panel-heading"><div><span class="eyebrow">Kế hoạch</span><h2>Tạo lịch tiêm</h2></div></div>
+  {% if herds or animals %}
+  <form method="post" class="form-grid">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="create_schedule">
+    <label>Tên vaccine<input name="vaccine_name" required maxlength="160"></label><label>Thời điểm đến hạn (giờ trang trại)<input type="datetime-local" name="due_at" required></label>
+    <label>Đối tượng<select name="target_kind" data-target-kind><option value="herd" {% if not herds %}disabled{% endif %}>Đàn/lô</option><option value="animal" {% if not animals %}selected{% endif %} {% if not animals %}disabled{% endif %}>Cá thể</option></select></label>
+    <label data-herd-target>Đàn<select name="herd_id">{% for herd in herds %}<option value="{{ herd.id }}">{{ display_labels.herds.get(herd.id, herd.name) }}</option>{% endfor %}</select></label>
+    <label data-animal-target hidden>Cá thể<select name="animal_id" disabled>{% for animal in animals %}<option value="{{ animal.id }}">{{ display_labels.animals.get(animal.id, 'Vật nuôi') }}</option>{% endfor %}</select></label>
+    <div class="form-actions form-span"><button class="button button-primary">Tạo lịch dự kiến</button></div>
+  </form>
+  {% else %}<p class="form-hint">Cần có ít nhất một đàn hoặc cá thể đang theo dõi trước khi lập lịch.</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

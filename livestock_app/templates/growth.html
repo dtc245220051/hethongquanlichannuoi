@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Dự đoán tăng trưởng{% endblock %}
+{% block content %}
+<section class="page-heading"><div><span class="eyebrow">AI và mô hình nội bộ</span><h1>Dự đoán tăng trưởng</h1><p>Hệ thống lấy lịch sử cân nặng, loài, đàn và tuổi (nếu có) từ cơ sở dữ liệu, gửi dữ liệu tối thiểu tới AI để dự báo cân nặng và xu hướng. Nếu Gemini tạm thời không khả dụng, hệ thống có thể dùng mô hình dự phòng nội bộ và ghi rõ nguồn kết quả. Bạn không nhập kết quả dự báo.</p></div></section>
+
+<section class="panel">
+  <form method="get" class="filter-bar">
+    <label class="filter-field">Vật nuôi
+      <select name="animal_id" onchange="this.form.submit()">
+        <option value="">— Chọn vật nuôi —</option>
+        {% for animal in animals %}
+        <option value="{{ animal.id }}" {% if animal.id == selected_animal_id %}selected{% endif %}>{{ display_labels.animals.get(animal.id, animal.identifier or animal.display_name or 'Vật nuôi') }}{% if animal.species_code %} · {{ species_names.get(animal.species_code, animal.species_code) }}{% endif %}{% if animal.herd_id and display_labels.herds.get(animal.herd_id) %} · {{ display_labels.herds.get(animal.herd_id) }}{% endif %}</option>
+        {% endfor %}
+      </select>
+      <span class="form-hint">Hiển thị tên/mã, loài và đàn. Dữ liệu hiện chưa có trường giống.</span>
+    </label>
+    <noscript><button class="button button-secondary" type="submit">Xem</button></noscript>
+  </form>
+</section>
+
+{% if selected_animal %}
+<div class="split-layout">
+  <section class="panel">
+    <div class="panel-heading"><div><span class="eyebrow">Dữ liệu đầu vào</span><h2>Lịch sử cân nặng</h2></div><span class="badge badge-muted">{{ weight_records|length }} lần cân</span></div>
+    {% if weight_records %}
+    <div class="table-wrap"><table><thead><tr><th>Thời điểm</th><th>Cân nặng</th><th>Ghi chú</th></tr></thead><tbody>
+    {% for record in weight_records %}<tr><td>{{ local_datetime(record.measured_at) }}</td><td><strong>{{ '%.3f'|format(record.weight_kg) }} kg</strong></td><td>{{ record.notes or '—' }}</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}<div class="empty-inline">Chưa có lần cân nào cho vật nuôi này.</div>{% endif %}
+  </section>
+
+  {% if can_write %}
+  <section class="panel">
+    <div class="panel-heading"><div><span class="eyebrow">Ghi nhận</span><h2>Thêm lần cân</h2></div></div>
+    <form method="post" class="form-stack" data-confirm="Lưu lần cân mới cho vật nuôi này?">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="add_weight">
+      <input type="hidden" name="animal_id" value="{{ selected_animal.id }}">
+      <label>Cân nặng (kg)<input type="number" name="weight_kg" step="0.001" min="0.001" max="9999999.999" required></label>
+      <label>Thời điểm cân (giờ trang trại)<input type="datetime-local" name="measured_at" value="{{ local_datetime_input(now) }}" max="{{ local_datetime_input(now) }}" required></label>
+      <label>Ghi chú<input type="text" name="notes" maxlength="500" placeholder="Không bắt buộc"></label>
+      <div class="form-actions"><button class="button button-primary">Lưu lần cân</button></div>
+    </form>
+  </section>
+  {% endif %}
+</div>
+
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Dự báo tăng trưởng</span><h2>Phân tích dữ liệu</h2></div>{% if ai_status.available %}<span class="badge badge-info">{{ ai_status.model }}</span>{% else %}<span class="badge badge-warning">Chưa cấu hình</span>{% endif %}</div>
+  {% if not ai_status.available %}
+  <div class="empty-state"><span class="empty-icon">!</span><h3>AI chưa sẵn sàng</h3><p>{{ ai_status.message }}</p></div>
+  {% elif weight_records|length < 2 %}
+  <div class="empty-state"><span class="empty-icon">↗</span><h3>Chưa đủ dữ liệu</h3><p>Cần ít nhất 2 lần cân để phân tích. Hãy ghi thêm lần cân trước khi gọi AI.</p></div>
+  {% elif can_write %}
+  <form method="post" class="form-stack" data-confirm="Gửi dữ liệu vật nuôi tới AI và lưu kết quả dự báo?">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="analyze_growth">
+    <input type="hidden" name="animal_id" value="{{ selected_animal.id }}">
+    <p class="form-hint">{{ ai_status.message }} Dữ liệu gửi đi gồm loài, lịch sử cân, đàn và tuổi nếu có; không gửi tên chủ trại hay thông tin đăng nhập.</p>
+    <div class="form-actions"><button class="button button-primary" data-loading-text="AI đang phân tích…">Phân tích bằng AI</button></div>
+  </form>
+  {% else %}
+  <div class="empty-inline">Tài khoản thú y chỉ được xem, không thể gọi AI và lưu kết quả.</div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Lịch sử</span><h2>Kết quả đã lưu</h2></div></div>
+  {% if predictions %}
+  <div class="table-wrap"><table><thead><tr><th>Thời điểm</th><th>Model</th><th>Dự báo 7/14/30 ngày</th><th>Độ tin cậy</th><th></th></tr></thead><tbody>
+  {% for prediction in predictions %}
+    {% set horizons = prediction.predicted.get('horizons', prediction.predicted) if prediction.predicted is mapping else {} %}
+    <tr>
+      <td>{{ local_datetime(prediction.created_at) }}</td>
+      <td>{{ prediction.ai_model or prediction.method }}{% if prediction.method.startswith('local-') %} <span class="badge badge-warning">Nội bộ</span>{% endif %}</td>
+      <td>{% for horizon in [7, 14, 30] %}{% set value = horizons.get(horizon|string) %}{% if value is not none %}<strong>{{ '%.2f'|format(value|float) }} kg</strong>{% if not loop.last %} · {% endif %}{% endif %}{% endfor %}</td>
+      <td>{{ {'low':'Thấp','medium':'Trung bình','high':'Cao'}.get(prediction.confidence, prediction.confidence or '—') }}</td>
+      <td><a class="text-link" href="{{ url_for('web.growth_prediction_detail', prediction_id=prediction.id) }}">Xem</a></td>
+    </tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="empty-state"><span class="empty-icon">↗</span><h3>Chưa có kết quả</h3><p>Bấm “Phân tích bằng AI” để tạo kết quả đầu tiên.</p></div>{% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Dữ liệu tham khảo</span><h2>Biểu đồ lịch sử cân</h2></div></div>
+  {% if chart_points %}
+  <div class="chart-wrap"><canvas id="growth-chart" height="260" aria-label="Biểu đồ lịch sử cân nặng" role="img"></canvas></div>
+  <script type="application/json" id="growth-chart-data">{{ {'points': chart_points, 'forecast': chart_forecast}|tojson }}</script>
+  {% else %}<div class="empty-inline">Chưa đủ dữ liệu để vẽ biểu đồ.</div>{% endif %}
+</section>
+{% else %}
+<section class="panel"><div class="empty-state"><span class="empty-icon">↗</span><h3>Chọn vật nuôi để bắt đầu</h3><p>Chọn một vật nuôi ở trên để xem lịch sử cân và tạo dự báo bằng AI.</p></div></section>
+{% endif %}
+{% endblock %}

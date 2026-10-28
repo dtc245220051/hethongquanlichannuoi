@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Thành viên trang trại{% endblock %}
+{% block content %}
+<section class="page-heading"><div><span class="eyebrow">Quản lý quyền truy cập</span><h1>Thành viên trang trại</h1><p>Chọn vai trò theo nhiệm vụ cần giao; tài khoản đăng nhập dùng email và mật khẩu riêng. Quản lí không được quản lý thành viên; Thú y chỉ được xem dữ liệu vật nuôi, sức khỏe và tiêm phòng.</p></div></section>
+<section class="panel">
+  <div class="panel-heading"><h2>Danh sách thành viên</h2></div>
+  {% if members %}
+  <div class="table-wrap"><table><thead><tr><th>Email</th><th>Tên hiển thị</th><th>Vai trò</th><th>Tình trạng tài khoản</th><th>Trạng thái thành viên</th></tr></thead><tbody>
+    {% for membership, user in members %}
+    <tr>
+      <td>{{ user.email }}</td>
+      <td>{{ user.display_name }}</td>
+      <td>{{ {'owner':'Chủ trang trại','care_staff':'Nhân viên chăm sóc','manager':'Quản lí','veterinarian':'Thú y'}.get(membership.role, 'Không xác định') }}</td>
+      <td>{{ 'Đang hoạt động' if user.status == 'active' else 'Đã vô hiệu hóa' }}</td>
+      <td>{{ 'Có hiệu lực' if user.status == 'active' else 'Không thể đăng nhập' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="empty-inline">Trang trại chưa có thành viên.</div>{% endif %}
+</section>
+<section class="panel panel-narrow">
+  <div class="panel-heading"><div><span class="eyebrow">Cấp quyền tối thiểu</span><h2>Thêm thành viên</h2></div></div>
+  <form method="post" class="form-grid">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <label>Email<input type="email" name="email" autocomplete="off" required maxlength="254"></label>
+    <label>Tên hiển thị<input name="display_name" required maxlength="160"></label>
+    <label>Vai trò<select name="role" required><option value="care_staff">Nhân viên chăm sóc</option><option value="manager">Quản lí</option><option value="veterinarian">Thú y</option></select></label>
+    <label>Mật khẩu ban đầu<input type="password" name="password" autocomplete="new-password" required minlength="12"></label>
+    <label>Nhập lại mật khẩu<input type="password" name="password_confirmation" autocomplete="new-password" required minlength="12"></label>
+    <p class="form-hint form-span">Mật khẩu tối thiểu 12 ký tự. Hãy chuyển mật khẩu ban đầu cho nhân viên qua kênh riêng; hệ thống chỉ lưu bản băm.</p>
+    <div class="form-actions form-span"><button class="button button-primary">Tạo tài khoản thành viên</button></div>
+  </form>
+</section>
+<section class="panel panel-narrow">
+ 
+</section>
+{% endblock %}

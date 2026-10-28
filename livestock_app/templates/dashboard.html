@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Tổng quan{% endblock %}
+{% block content %}
+<section class="page-heading"><div><span class="eyebrow">Tình hình hoạt động</span><h1>Tổng quan trang trại</h1><p>Số liệu được truy vấn từ dữ liệu hiện có trong trang trại.</p></div><a class="button button-secondary" href="{{ url_for('web.alerts') }}">Xem cảnh báo <span class="button-count">{{ open_alerts }}</span></a></section>
+<section class="stat-grid" aria-label="Thống kê trang trại">
+  <article class="stat-card"><span class="stat-icon">⌂</span><span class="stat-label">Chuồng đang hoạt động</span><strong>{{ barn_count }}</strong><a href="{{ url_for('web.barns') }}">Chi tiết chuồng →</a></article>
+  <article class="stat-card"><span class="stat-icon">◉</span><span class="stat-label">Đàn đang theo dõi</span><strong>{{ herd_count }}</strong><a href="{{ url_for('web.livestock') }}">Quản lý đàn →</a></article>
+  <article class="stat-card"><span class="stat-icon">●</span><span class="stat-label">Cá thể đã định danh</span><strong>{{ identified_animals }}</strong><a href="{{ url_for('web.livestock') }}">Xem vật nuôi →</a></article>
+  <article class="stat-card stat-highlight"><span class="stat-icon">＋</span><span class="stat-label">Tổng số vật nuôi</span><strong>{{ total_heads }}</strong><small>Không cộng trùng cá thể thuộc đàn</small></article>
+  <article class="stat-card"><span class="stat-icon">▤</span><span class="stat-label">Tồn kho thức ăn</span><strong>{{ feed_total }} <small>kg</small></strong><a href="{{ url_for('web.feed') }}">Xem kho thức ăn →</a></article>
+  <article class="stat-card"><span class="stat-icon">◷</span><span class="stat-label">Lịch tiêm quá hạn</span><strong data-metric="overdue-vaccinations" class="{% if overdue_vaccinations %}text-danger{% endif %}">{{ overdue_vaccinations }}</strong><a href="{{ url_for('web.vaccinations') }}">Quản lý lịch →</a></article>
+  <article class="stat-card"><span class="stat-icon">◷</span><span class="stat-label">Lịch tiêm 7 ngày tới</span><strong>{{ upcoming_vaccinations }}</strong><a href="{{ url_for('web.vaccinations') }}">Xem lịch tiêm →</a></article>
+  <article class="stat-card"><span class="stat-icon">!</span><span class="stat-label">Cảnh báo đang mở</span><strong class="{% if open_alerts %}text-warning{% endif %}">{{ open_alerts }}</strong><a href="{{ url_for('web.alerts') }}">Xử lý cảnh báo →</a></article>
+</section>
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Nhật ký vận hành</span><h2>Thay đổi đàn gần đây</h2></div><a class="text-link" href="{{ url_for('web.livestock') }}">Mở quản lý đàn</a></div>
+  {% if recent_events %}<div class="table-wrap"><table><thead><tr><th>Thời điểm (UTC)</th><th>Sự kiện</th><th>Số lượng</th><th>Lý do</th></tr></thead><tbody>{% for event in recent_events %}<tr><td>{{ event.occurred_at.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ event.event_type|replace('_',' ')|capitalize }}</td><td>{{ event.head_count }}</td><td>{{ event.reason }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state"><span class="empty-icon">◌</span><h3>Chưa có hoạt động</h3><p>Khi có ghi nhận nghiệp vụ, lịch sử sẽ hiển thị tại đây.</p></div>{% endif %}
+</section>
+{% endblock %}

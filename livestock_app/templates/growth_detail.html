@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% set is_local = prediction.method.startswith('local-') or (prediction.ai_model or '').startswith('local-') %}
+{% block title %}{% if is_local %}Kết quả mô hình nội bộ{% else %}Kết quả dự báo AI{% endif %}{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('web.growth', animal_id=prediction.animal_id) }}">← Dự đoán tăng trưởng</a>
+<section class="page-heading"><div><span class="eyebrow">{% if is_local %}Kết quả mô hình nội bộ{% else %}Kết quả do AI tạo{% endif %}</span><h1>Dự báo tăng trưởng</h1><p>{% if animal %}{{ display_labels.animals.get(animal.id, 'Vật nuôi') }}{% else %}Vật nuôi{% endif %} · {{ local_datetime(prediction.created_at) }} · {{ prediction.ai_model or prediction.method }}</p></div><span class="badge badge-info">{{ {'low':'Độ tin cậy thấp','medium':'Độ tin cậy trung bình','high':'Độ tin cậy cao'}.get(prediction.confidence, prediction.confidence or 'Chưa rõ') }}</span></section>
+
+{% if is_local %}
+<div class="flash flash-warning">Gemini tạm thời không khả dụng. Kết quả này do mô hình dự phòng nội bộ tạo từ lịch sử cân nặng, không phải do Gemini tạo.</div>
+{% endif %}
+
+<div class="stat-grid detail-stats">
+  {% for horizon in [7, 14, 30] %}
+  {% set value = forecasts.get(horizon) %}
+  <div class="stat-card"><span class="stat-label">Dự báo sau {{ horizon }} ngày</span><strong class="detail-value">{% if value is not none %}{{ '%.2f'|format(value) }} <small>kg</small>{% else %}—{% endif %}</strong></div>
+  {% endfor %}
+</div>
+
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Giải thích</span><h2>{% if is_local %}Kết luận của mô hình nội bộ{% else %}Kết luận của AI{% endif %}</h2></div><span class="badge badge-muted">Xu hướng: {{ {'increasing':'Tăng','stable':'Ổn định','decreasing':'Giảm','uncertain':'Chưa chắc chắn'}.get(prediction.trend, prediction.trend or '—') }}</span></div>
+  <p class="assistant-answer">{{ prediction.explanation }}</p>
+  {% if limitations %}
+  <div class="plain-list">
+    {% for limitation in limitations %}<div>{{ limitation }}</div>{% endfor %}
+  </div>
+  {% endif %}
+  <p class="form-hint">Phương pháp: <span class="mono">{{ prediction.method }}</span>. {% if is_local %}Kết quả do mô hình dự phòng nội bộ tạo, không phải Gemini.{% else %}Kết quả do AI tạo{% endif %} từ dữ liệu bên dưới, không phải cam kết tăng trưởng thực tế.</p>
+</section>
+
+{% if chart_points %}
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Trực quan</span><h2>Lịch sử và dự báo</h2></div></div>
+  <div class="chart-wrap"><canvas id="growth-chart" height="260" aria-label="Biểu đồ lịch sử và dự báo cân nặng" role="img"></canvas></div>
+  <script type="application/json" id="growth-chart-data">{{ {'points': chart_points, 'forecast': chart_forecast}|tojson }}</script>
+</section>
+{% endif %}
+
+{% set snapshot = prediction.input_snapshot if prediction.input_snapshot is mapping else {} %}
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Truy vết</span><h2>{% if is_local %}Dữ liệu mô hình đã dùng{% else %}Dữ liệu AI đã dùng{% endif %}</h2></div><span class="badge badge-muted">{{ snapshot.get('record_count', prediction.history_count) }} lần cân</span></div>
+  {% if snapshot %}
+  <div class="simple-list">
+    <div class="simple-row"><div><strong>Loài</strong><small>{{ snapshot.get('species', {}).get('name_vi', '—') }} ({{ snapshot.get('species', {}).get('code', '—') }})</small></div></div>
+    <div class="simple-row"><div><strong>Giống</strong><small>Chưa có trong dữ liệu</small></div></div>
+    <div class="simple-row"><div><strong>Tuổi</strong><small>{% if snapshot.get('age_days') is not none %}{{ snapshot.get('age_days') }} ngày{% else %}Chưa xác định{% endif %}</small></div></div>
+    <div class="simple-row"><div><strong>Cân nặng gần nhất</strong><small>{{ snapshot.get('latest_weight_kg', '—') }} kg</small></div></div>
+    <div class="simple-row"><div><strong>Thời gian quan sát</strong><small>{{ snapshot.get('observation_days', '—') }} ngày</small></div></div>
+  </div>
+  {% if snapshot.get('missing_data') %}
+  <p class="form-hint">Dữ liệu còn thiếu: {{ snapshot.get('missing_data')|join(' ') }}</p>
+  {% endif %}
+  {% endif %}
+  <div class="table-wrap"><table><thead><tr><th>Thời điểm (UTC)</th><th>Cân nặng</th></tr></thead><tbody>
+  {% for weight in snapshot.get('weights', []) %}
+    <tr><td>{{ weight.get('measured_at', '—')[:16]|replace('T', ' ') }}</td><td>{{ weight.get('weight_kg', '—') }} kg</td></tr>
+  {% else %}
+    <tr><td colspan="2">Không có lịch sử cân trong bản ghi này.</td></tr>
+  {% endfor %}
+  </tbody></table></div>
+</section>
+
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Lịch sử cân đầy đủ</span><h2>Dữ liệu nguồn</h2></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Thời điểm</th><th>Cân nặng</th><th>Ghi chú</th></tr></thead><tbody>
+  {% for record in weight_records %}<tr><td>{{ local_datetime(record.measured_at) }}</td><td>{{ '%.3f'|format(record.weight_kg) }} kg</td><td>{{ record.notes or '—' }}</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}

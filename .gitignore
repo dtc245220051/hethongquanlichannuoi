@@ -1,0 +1,52 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+*.db
+instance/
+.pytest_cache/
+build/
+dist/
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local data and logs
+*.db
+*.sqlite3
+*.log
+instance/
+tmp/
+temp/
+
+# Database backups - keep locally, do not publish
+*.sql
+*.sql.gz
+*.dump
+*.bak
+
+# Local archives and internal review files
+livestock-ai-agent-source.zip
+chat_files_review.txt
+
+# Editors and operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local demo environment file
+..env.demo

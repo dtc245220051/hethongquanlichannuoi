@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Quản lý chăn nuôi{% endblock %} · Nông trại</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script defer src="{{ url_for('static', filename='app.js') }}"></script>
+</head>
+<body>
+{% if g.user %}
+  <div class="app-shell" data-sidebar>
+    <aside class="sidebar" id="app-sidebar">
+      <a class="brand" href="{{ url_for('web.dashboard') }}"><span class="brand-mark">N</span><span>Nông trại<span class="brand-sub">Quản lý chăn nuôi</span></span></a>
+      <button class="sidebar-mobile-close" type="button" aria-label="Đóng menu" aria-controls="app-sidebar" aria-expanded="true" data-sidebar-toggle>Đóng menu ×</button>
+      <nav class="main-nav" aria-label="Điều hướng chính">
+        {% if g.membership.role != 'veterinarian' %}
+          <a href="{{ url_for('web.dashboard') }}" class="{% if request.endpoint == 'web.dashboard' %}active{% endif %}">Tổng quan</a>
+          <a href="{{ url_for('web.barns') }}" class="{% if request.endpoint in ['web.barns', 'web.barn_detail'] %}active{% endif %}">Chuồng trại</a>
+        {% endif %}
+        <a href="{{ url_for('web.livestock') }}" class="{% if request.endpoint == 'web.livestock' %}active{% endif %}">Đàn &amp; vật nuôi</a>
+        <a href="{{ url_for('web.health_records') }}" class="{% if request.endpoint == 'web.health_records' %}active{% endif %}">Nhật ký sức khỏe</a>
+        {% if g.membership.role != 'veterinarian' %}
+          <a href="{{ url_for('web.feed') }}" class="{% if request.endpoint == 'web.feed' %}active{% endif %}">Kho thức ăn</a>
+        {% endif %}
+        <a href="{{ url_for('web.vaccinations') }}" class="{% if request.endpoint == 'web.vaccinations' %}active{% endif %}">Lịch tiêm phòng</a>
+        <a href="{{ url_for('web.disease_risk') }}" class="{% if request.endpoint in ['web.disease_risk', 'web.disease_risk_detail'] %}active{% endif %}">Phân tích nguy cơ bệnh</a>
+        <a href="{{ url_for('web.growth') }}" class="{% if request.endpoint in ['web.growth', 'web.growth_prediction_detail'] %}active{% endif %}">Dự đoán tăng trưởng</a>
+        {% if g.membership.role != 'veterinarian' %}
+          <a href="{{ url_for('web.feed_plans') }}" class="{% if request.endpoint in ['web.feed_plans', 'web.feed_plan_detail'] %}active{% endif %}">Gợi ý khẩu phần</a>
+          <a href="{{ url_for('web.alerts') }}" class="{% if request.endpoint in ['web.alerts', 'web.alert_detail'] %}active{% endif %}">Cảnh báo</a>
+        {% endif %}
+        <a href="{{ url_for('web.assistant') }}" class="{% if request.endpoint == 'web.assistant' %}active{% endif %}">Trợ lý AI</a>
+        {% if g.membership.role == 'owner' %}
+          <a href="{{ url_for('web.members') }}" class="{% if request.endpoint == 'web.members' %}active{% endif %}">Thành viên</a>
+          <a href="{{ url_for('web.audit') }}" class="{% if request.endpoint == 'web.audit' %}active{% endif %}">Nhật ký hệ thống</a>
+        {% endif %}
+      </nav>
+      <div class="sidebar-foot">Dữ liệu hiển thị theo quyền được cấp.</div>
+    </aside>
+    <div class="main-area">
+      <header class="topbar">
+        <button class="icon-button sidebar-toggle" type="button" aria-label="Thu gọn menu" aria-controls="app-sidebar" aria-expanded="true" data-sidebar-toggle>☰</button>
+        <div class="farm-name"><span class="eyebrow">Trang trại</span><strong>{{ g.farm.name }}</strong></div>
+        <div class="user-menu"><span class="user-avatar">{{ g.user.display_name[:1]|upper }}</span><span class="user-label"><strong>{{ g.user.display_name }}</strong><small>{{ {'owner':'Chủ trang trại','care_staff':'Nhân viên chăm sóc','manager':'Quản lí','veterinarian':'Thú y'}.get(g.membership.role, 'Thành viên') }}</small></span>
+          <form method="post" action="{{ url_for('web.logout') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><button class="button button-quiet button-small" type="submit">Đăng xuất</button></form>
+        </div>
+      </header>
+      <main class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}<div class="flash-stack" aria-live="polite">{% for category, message in messages %}<div class="flash flash-{{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </main>
+      <footer class="footer">Hệ thống quản lý chăn nuôi <span>·</span> Phạm vi: {{ g.farm.name }}</footer>
+    </div>
+  </div>
+{% else %}
+  {% block public_content %}{% endblock %}
+{% endif %}
+</body>
+</html>

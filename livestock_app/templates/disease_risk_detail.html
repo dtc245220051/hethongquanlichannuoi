@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Chi tiết phân tích nguy cơ{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('web.disease_risk') }}">← Danh sách phân tích</a>
+<section class="page-heading"><div><span class="eyebrow">Sàng lọc tham khảo</span><h1>Chi tiết phân tích nguy cơ</h1><p>{{ display_labels.animals.get(assessment.animal_id, 'Vật nuôi') }} · {{ local_datetime(assessment.created_at) }}</p></div><span class="badge {{ {'low':'badge-success','medium':'badge-warning','high':'badge-danger'}.get(assessment.risk_level,'badge-muted') }} badge-large">{{ risk_labels.get(assessment.risk_level, assessment.risk_level) }}</span></section>
+
+{% if assessment.emergency_warning %}
+<div class="flash flash-error assistant-status"><div><strong>Cảnh báo cấp cứu.</strong> Có dấu hiệu nguy hiểm trong lần phân tích này. Hãy liên hệ bác sĩ thú y ngay.</div></div>
+{% endif %}
+
+<div class="split-layout">
+  <section class="panel">
+    <div class="panel-heading"><h2>Dấu hiệu đã ghi nhận</h2></div>
+    <ul class="plain-list">
+      {% for sign in assessment.signs_used %}<li>{{ sign }}</li>{% endfor %}
+    </ul>
+    <div class="panel-heading panel-heading-tight"><h2>Giải thích</h2></div>
+    <p class="assistant-answer">{{ assessment.explanation }}</p>
+  </section>
+  <section class="panel">
+    <div class="panel-heading"><h2>Khuyến nghị theo dõi</h2></div>
+    <ul class="plain-list">
+      {% for line in assessment.recommendations.split('\n') %}{% if line.strip() %}<li>{{ line }}</li>{% endif %}{% endfor %}
+    </ul>
+    <p class="form-hint">Phương pháp: <span class="mono">{{ assessment.method }}</span>. Kết quả chỉ mang tính sàng lọc tham khảo, không phải chẩn đoán bệnh và không thay thế tư vấn thú y.</p>
+  </section>
+</div>
+{% endblock %}

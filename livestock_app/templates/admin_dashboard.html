@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quản trị hệ thống</title>
+</head>
+<body>
+    <h1>Quản trị hệ thống</h1>
+    <p>Đăng nhập thành công với quyền quản trị toàn hệ thống.</p>
+    <p>Tài khoản: {{ g.user.email }}</p>
+
+    <form method="POST" action="{{ url_for('web.logout') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Đăng xuất</button>
+    </form>
+</body>
+</html>

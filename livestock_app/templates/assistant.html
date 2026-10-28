@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Trợ lý AI{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div>
+    <span class="eyebrow">Tra cứu dữ liệu</span>
+    <h1>Trợ lý trang trại</h1>
+    <p>Hỏi bằng tiếng Việt về số lượng vật nuôi, chuồng, thức ăn, lịch tiêm, cảnh báo hoặc ghi nhận sức khỏe.</p>
+  </div>
+</section>
+
+<section class="assistant-status {% if status.available %}assistant-status-active{% else %}assistant-status-disabled{% endif %}" aria-live="polite">
+  <span class="assistant-status-label">{{ status.label }}</span>
+  <p>{{ status.message }}</p>
+</section>
+
+<section class="panel assistant-panel">
+  <div class="assistant-chat-heading">
+    <h2>Cuộc trò chuyện</h2>
+    <button class="button button-secondary" type="button" data-clear-chat>Xóa hội thoại</button>
+  </div>
+  <div class="assistant-chat-messages" data-chat-messages role="log" aria-live="polite"
+    aria-relevant="additions text" aria-label="Tin nhắn trợ lý và người dùng"></div>
+  <div class="assistant-chat-error flash flash-error" data-chat-error role="alert" hidden></div>
+  <form id="assistant-form" method="post" action="{{ url_for('web.assistant') }}"
+    data-message-url="{{ url_for('web.assistant_message') }}"
+    data-csrf-token="{{ csrf_token() }}"
+    data-chat-key="livestock-assistant-{{ csrf_token() }}"
+    class="assistant-form" data-loading-text="Đang chờ Gemini…">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <label for="assistant-question">Tin nhắn</label>
+    <textarea id="assistant-question" name="question" rows="3" maxlength="2000" required
+      placeholder="Ví dụ: Cho tôi xem tổng quan số lượng vật nuôi và đàn">{{ question }}</textarea>
+    <div class="assistant-form-footer">
+      <small>Giới hạn 2.000 ký tự. Không nhập thông tin cá nhân nhạy cảm.</small>
+      <button class="button button-primary" type="submit" {% if not status.available %}disabled{% endif %}>Tra cứu</button>
+    </div>
+    <p class="assistant-progress" data-submit-progress role="status" aria-live="polite" hidden>
+      Đang gửi câu hỏi và chờ Gemini xử lý. Có thể mất một lúc.
+    </p>
+  </form>
+</section>
+
+{% if error %}
+  <section class="flash flash-error" role="alert">{{ error }}</section>
+{% endif %}
+
+{% if result %}
+  <section class="panel assistant-result" aria-live="polite">
+    <div class="panel-heading">
+      <div>
+        <span class="eyebrow">{{ result.mode_label }}</span>
+        <h2>Kết quả</h2>
+      </div>
+      <span class="badge badge-info">{{ result.observed_at }}</span>
+    </div>
+    <p class="assistant-answer">{{ result.answer }}</p>
+    <p class="assistant-scope">{{ result.data_scope }}</p>
+    {% if result.tool_calls %}
+      <h3>Công cụ và dữ liệu nguồn</h3>
+      <div class="assistant-tools">
+        {% for call in result.tool_calls %}
+          <details class="assistant-tool">
+            <summary>
+              <span><strong>{{ call.name }}</strong><small>{{ call.description }}</small></span>
+              <span class="badge badge-muted">{{ call.row_count }} bản ghi</span>
+            </summary>
+            <pre class="assistant-tool-data">{{ call.data|tojson(indent=2) }}</pre>
+          </details>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Chi tiết khẩu phần{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('web.feed_plans') }}">← Danh sách khẩu phần</a>
+<section class="page-heading"><div><span class="eyebrow">Phương án khẩu phần</span><h1>{{ plan.name }}</h1><p>{% if animal %}{{ display_labels.animals.get(animal.id, 'Vật nuôi') }}{% else %}{{ display_labels.herds.get(plan.herd_id, 'Đàn/lô') }}{% endif %} · {{ plan.period_days }} ngày · {{ local_datetime(plan.created_at) }}</p></div>
+<div>{% if plan.source == 'ai' %}<span class="badge badge-info badge-large">Đề xuất AI</span>{% else %}<span class="badge badge-muted badge-large">Thủ công</span>{% endif %} {% if plan.status == 'proposed' %}<span class="badge badge-warning badge-large">Chưa chấp nhận</span>{% elif plan.status == 'accepted' %}<span class="badge badge-success badge-large">Đã chấp nhận</span>{% endif %}</div></section>
+
+{% if summary %}
+<div class="stat-grid detail-stats">
+  <div class="stat-card"><span class="stat-label">Lượng mỗi ngày</span><strong class="detail-value">{{ '%.3f'|format(summary.total_amount_per_day) }} <small>kg</small></strong></div>
+  <div class="stat-card"><span class="stat-label">Lượng cả kỳ</span><strong class="detail-value">{{ '%.3f'|format(summary.total_amount_period) }} <small>kg</small></strong></div>
+  <div class="stat-card"><span class="stat-label">Chi phí mỗi ngày</span><strong class="detail-value">{{ '{:,.0f}'.format(summary.total_daily_cost) }} <small>đ</small></strong></div>
+  <div class="stat-card"><span class="stat-label">Chi phí cả kỳ</span><strong class="detail-value">{{ '{:,.0f}'.format(summary.total_period_cost) }} <small>đ</small></strong></div>
+</div>
+{% endif %}
+
+{% if plan.source == 'ai' %}
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Kết quả AI</span><h2>Giải thích và giới hạn</h2></div><span class="badge badge-info">{{ plan.ai_model or 'AI' }}</span></div>
+  <p class="assistant-answer">{{ plan.rationale or 'Không có giải thích.' }}</p>
+  <div class="simple-list">
+    <div class="simple-row"><div><strong>Số bữa mỗi ngày</strong><small>{{ plan.feedings_per_day or '—' }}</small></div></div>
+    <div class="simple-row"><div><strong>Cách chia bữa</strong><small>{{ plan.schedule_note or '—' }}</small></div></div>
+    <div class="simple-row"><div><strong>Độ tin cậy</strong><small>{{ {'low':'Thấp','medium':'Trung bình','high':'Cao'}.get(plan.confidence, plan.confidence or '—') }}</small></div></div>
+  </div>
+  {% if limitations %}
+  <div class="plain-list">
+    {% for limitation in limitations %}<div>{{ limitation }}</div>{% endfor %}
+  </div>
+  {% endif %}
+  <p class="form-hint">Đây là đề xuất do AI tạo, chưa được chuyên gia phê duyệt. Không thay thế tư vấn thú y.</p>
+</section>
+
+{% set snapshot = plan.input_snapshot if plan.input_snapshot is mapping else {} %}
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Truy vết</span><h2>Dữ liệu AI đã dùng</h2></div></div>
+  {% if snapshot %}
+  <div class="simple-list">
+    <div class="simple-row"><div><strong>Đối tượng</strong><small>{{ 'Cá thể' if snapshot.get('subject_type') == 'animal' else 'Đàn/lô' }}</small></div></div>
+    <div class="simple-row"><div><strong>Loài</strong><small>{{ snapshot.get('species', {}).get('name_vi', '—') }} ({{ snapshot.get('species', {}).get('code', '—') }})</small></div></div>
+    <div class="simple-row"><div><strong>Mục tiêu</strong><small>{{ {'maintenance':'Duy trì','growth':'Tăng trưởng','finishing':'Vỗ béo'}.get(snapshot.get('goal'), snapshot.get('goal', '—')) }}</small></div></div>
+    <div class="simple-row"><div><strong>Tuổi</strong><small>{% if snapshot.get('age_days') is not none %}{{ snapshot.get('age_days') }} ngày{% else %}Chưa xác định{% endif %}</small></div></div>
+    <div class="simple-row"><div><strong>Số đầu con / đã cân</strong><small>{{ snapshot.get('head_count', '—') }} / {{ snapshot.get('weighed_head_count', '—') }}</small></div></div>
+    <div class="simple-row"><div><strong>Cân nặng dùng để tính</strong><small>{{ snapshot.get('latest_weight_kg', '—') }} kg{% if snapshot.get('subject_type') == 'herd' %} (trung bình){% endif %}</small></div></div>
+    <div class="simple-row"><div><strong>Tổng khối lượng ước tính</strong><small>{{ snapshot.get('estimated_total_weight_kg', '—') }} kg</small></div></div>
+  </div>
+  {% if snapshot.get('missing_data') %}<p class="form-hint">Dữ liệu còn thiếu: {{ snapshot.get('missing_data')|join(' ') }}</p>{% endif %}
+  {% endif %}
+  <div class="table-wrap"><table><thead><tr><th>Thức ăn khả dụng</th><th>Tồn kho</th><th>Giá gần nhất</th><th>Tiêu thụ 30 ngày</th></tr></thead><tbody>
+  {% for feed in snapshot.get('available_feed', []) %}
+    <tr><td>{{ feed.get('name', '—') }}</td><td>{{ feed.get('available_kg', '—') }} kg</td><td>{% if feed.get('last_price_per_kg') is not none %}{{ '%.3f'|format(feed.get('last_price_per_kg')) }} đ/kg{% else %}Chưa có{% endif %}</td><td>{{ feed.get('recent_consumption_kg_30d', 0) }} kg</td></tr>
+  {% else %}
+    <tr><td colspan="4">Không có danh mục thức ăn trong bản ghi này.</td></tr>
+  {% endfor %}
+  </tbody></table></div>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Thành phần</span><h2>Chi tiết thức ăn</h2></div>{% if plan.source == 'ai' %}<span class="badge badge-muted">Tỷ lệ tính từ lượng AI đề xuất</span>{% endif %}</div>
+  {% if items %}
+  <div class="table-wrap"><table><thead><tr><th>Thức ăn</th><th>Tỷ lệ</th><th>Giá/kg</th><th>Lượng/ngày</th><th>Lượng cả kỳ</th><th>Chi phí cả kỳ</th><th>Lý do / ghi chú</th></tr></thead><tbody>
+  {% for item in items %}
+    {% set line = summary.lines[loop.index0] if summary else None %}
+    {% set meta = item.nutrients if item.nutrients is mapping else {} %}
+    <tr>
+      <td><strong>{{ item.feed_name }}</strong></td>
+      <td>{% if meta.get('mix_ratio_percent') is not none %}{{ '%.1f'|format(meta.get('mix_ratio_percent')) }}%{% else %}—{% endif %}</td>
+      <td>{{ '%.3f'|format(item.price_per_unit) }} đ</td>
+      <td>{{ '%.3f'|format(item.amount_per_day) }} kg</td>
+      <td>{% if line %}{{ '%.3f'|format(line.total_amount) }} kg{% else %}—{% endif %}</td>
+      <td>{% if line %}{{ '{:,.0f}'.format(line.period_cost) }} đ{% else %}—{% endif %}</td>
+      <td>{{ item.notes or '—' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="empty-inline">Phương án chưa có thành phần.</div>{% endif %}
+  {% if summary %}<p class="form-hint">{{ summary.nutritional_note }}</p>{% endif %}
+  {% set ns = namespace(missing_price=false) %}
+  {% for item in items %}{% set meta = item.nutrients if item.nutrients is mapping else {} %}{% if meta.get('price_source') == 'missing' %}{% set ns.missing_price = true %}{% endif %}{% endfor %}
+  {% if ns.missing_price %}<p class="form-hint text-warning">Một số thức ăn chưa có giá lịch sử; chi phí hiển thị 0 không có nghĩa là miễn phí.</p>{% endif %}
+  {% if plan.notes %}<p class="form-hint">Ghi chú: {{ plan.notes }}</p>{% endif %}
+  {% if plan.assumptions %}<p class="form-hint">Giả định: {{ plan.assumptions }}</p>{% endif %}
+</section>
+
+{% if can_write %}
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Quyết định</span><h2>Chấp nhận hoặc điều chỉnh</h2></div></div>
+  {% if plan.source == 'ai' and plan.status == 'proposed' %}
+  <form method="post" action="{{ url_for('web.feed_plan_accept', plan_id=plan.id) }}" class="form-stack" data-confirm="Chấp nhận đề xuất AI này?">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <p class="form-hint">Chấp nhận sẽ đánh dấu đề xuất này là phương án đã được người có quyền phê duyệt. Nội dung AI không bị sửa.</p>
+    <div class="form-actions"><button class="button button-primary">Chấp nhận đề xuất AI</button></div>
+  </form>
+  {% elif plan.source == 'ai' and plan.status == 'accepted' %}
+  <p class="form-hint">Đề xuất đã được chấp nhận{% if plan.accepted_at %} lúc {{ local_datetime(plan.accepted_at) }}{% endif %}.</p>
+  {% endif %}
+
+  {% if plan.source == 'ai' %}
+  <details class="assistant-tool">
+    <summary><strong>Tạo bản điều chỉnh thủ công</strong><span class="badge badge-muted">Không sửa bản AI</span></summary>
+    <div class="assistant-tool-data">
+      <form method="post" action="{{ url_for('web.feed_plan_manual_adjust', plan_id=plan.id) }}" class="form-stack" data-confirm="Lưu bản điều chỉnh thủ công? Bản đề xuất AI sẽ giữ nguyên.">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="form-grid">
+          <label class="form-span">Tên bản điều chỉnh<input type="text" name="name" maxlength="160" value="Điều chỉnh thủ công · {{ plan.name }}" required></label>
+          <label>Số ngày của kỳ<input type="number" name="period_days" min="1" max="365" value="{{ plan.period_days }}" required></label>
+          <label class="form-span">Ghi chú<input type="text" name="notes" maxlength="1000" placeholder="Lý do điều chỉnh"></label>
+        </div>
+        <fieldset class="feed-fieldset">
+          <legend>Thành phần điều chỉnh</legend>
+          <div class="feed-rows" data-feed-rows>
+            {% for item in items %}
+            <div class="feed-row" data-feed-row>
+              <label>Tên thức ăn<input type="text" name="feed_name" maxlength="160" value="{{ item.feed_name }}" required></label>
+              <label>Đơn vị<input type="text" name="unit" maxlength="32" value="{{ item.unit }}" required></label>
+              <label>Giá mỗi đơn vị<input type="number" name="price_per_unit" step="0.001" min="0" value="{{ item.price_per_unit }}" required></label>
+              <label>Lượng mỗi ngày<input type="number" name="amount_per_day" step="0.001" min="0.001" value="{{ item.amount_per_day }}" required></label>
+              <label>Ghi chú<input type="text" name="item_notes" maxlength="500" value="{{ item.notes or '' }}"></label>
+              <button type="button" class="button button-quiet button-small" data-remove-feed-row>Xóa</button>
+            </div>
+            {% endfor %}
+          </div>
+          <button type="button" class="button button-secondary button-small" data-add-feed-row>+ Thêm thức ăn</button>
+        </fieldset>
+        <div class="form-actions"><button class="button button-secondary">Lưu bản điều chỉnh thủ công</button></div>
+      </form>
+    </div>
+  </details>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

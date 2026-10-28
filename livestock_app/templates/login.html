@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Đăng nhập{% endblock %}
+{% block public_content %}
+<main class="login-page">
+  <section class="login-card">
+    <a class="brand login-brand" href="{{ url_for('web.login') }}"><span class="brand-mark">N</span><span>Nông trại<span class="brand-sub">Quản lý chăn nuôi</span></span></a>
+    <div class="login-heading"><span class="eyebrow">Chào mừng trở lại</span><h1>Đăng nhập hệ thống</h1><p>Sử dụng tài khoản được cấp bởi đơn vị quản lý trang trại.</p></div>
+    {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="flash-stack">{% for category, message in messages %}<div class="flash flash-{{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+    <form method="post" class="form-stack">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <label>Email<input type="email" name="email" autocomplete="username" required maxlength="254"></label>
+      <label>Mật khẩu<input type="password" name="password" autocomplete="current-password" required></label>
+      <button class="button button-primary button-wide" type="submit">Đăng nhập</button>
+    </form>
+    <p class="login-note">Nếu chưa có tài khoản, liên hệ người quản lý để được cấp quyền. Hệ thống không tạo tài khoản mặc định.</p>
+  </section>
+</main>
+{% endblock %}

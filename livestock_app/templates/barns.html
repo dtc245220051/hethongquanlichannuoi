@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Chuồng trại{% endblock %}
+{% block content %}
+<section class="page-heading"><div><span class="eyebrow">Cơ sở vật chất</span><h1>Chuồng trại</h1><p>Theo dõi sức chứa và số vật nuôi hiện tại.</p></div></section>
+<section class="panel">
+  <div class="panel-heading"><h2>Danh sách chuồng</h2><form method="get" class="search-form"><label class="sr-only" for="barn-search">Tìm chuồng</label><input id="barn-search" name="q" value="{{ search }}" placeholder="Tìm theo tên chuồng"><button class="button button-secondary button-small">Tìm kiếm</button></form></div>
+  {% if barns %}<div class="table-wrap"><table><thead><tr><th>Tên chuồng</th><th>Vị trí</th><th>Sức chứa</th><th>Hiện tại</th><th>Tình trạng</th><th></th></tr></thead><tbody>{% for barn in barns %}<tr><td><a class="text-link" href="{{ url_for('web.barn_detail', barn_id=barn.id) }}">{{ display_labels.barns.get(barn.id, barn.name) }}</a></td><td>{{ barn.location_note or '—' }}</td><td>{{ barn.capacity_heads }}</td><td><div class="capacity-cell"><span>{{ occupancy[barn.id] }} / {{ barn.capacity_heads }}</span><span class="progress"><i style="width: {{ [occupancy[barn.id] * 100 // barn.capacity_heads, 100]|min }}%"></i></span></div></td><td><span class="badge badge-{{ 'success' if barn.status == 'active' else 'muted' }}">{{ 'Đang hoạt động' if barn.status == 'active' else 'Ngừng hoạt động' }}</span></td><td><a class="button button-quiet button-small" href="{{ url_for('web.barn_detail', barn_id=barn.id) }}">Chi tiết</a></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state"><span class="empty-icon">⌂</span><h3>Chưa có chuồng trại</h3><p>Thêm chuồng để bắt đầu quản lý sức chứa.</p></div>{% endif %}
+</section>
+{% if g.membership.role in ['owner', 'manager'] %}
+<section class="panel panel-narrow"><div class="panel-heading"><div><span class="eyebrow">Thiết lập cơ sở</span><h2>Thêm chuồng</h2></div></div><form method="post" class="form-grid">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+  <label>Tên chuồng<input name="name" required maxlength="160"></label>
+  <label>Sức chứa (con)<input type="number" name="capacity_heads" min="1" required></label>
+  <label class="form-span">Ghi chú vị trí<input name="location_note" maxlength="500"></label>
+  <div class="form-actions form-span"><button class="button button-primary" type="submit">Tạo chuồng</button></div>
+</form></section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Nhật ký hệ thống{% endblock %}
+{% block content %}
+<section class="page-heading"><div><span class="eyebrow">Chỉ chủ trang trại</span><h1>Nhật ký hoạt động</h1><p>Chỉ đọc, trong phạm vi trang trại. Bản ghi không có chức năng sửa hoặc xóa.</p></div></section>
+<section class="panel">{% if rows %}<div class="table-wrap"><table><thead><tr><th>Thời điểm (UTC)</th><th>Hành động</th><th>Đối tượng</th><th>Kết quả</th><th>Mã bản ghi</th></tr></thead><tbody>{% for row in rows %}<tr><td>{{ row.occurred_at.strftime('%d/%m/%Y %H:%M:%S') }}</td><td>{{ row.action }}</td><td>{{ row.entity_type|replace('_', ' ')|capitalize }} · {{ audit_labels.get(row.id, '—') }}</td><td><span class="badge badge-{{ 'success' if row.outcome == 'success' else 'warning' }}">{{ row.outcome }}</span></td><td>Nhật ký #{{ loop.index }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state"><span class="empty-icon">≡</span><h3>Chưa có bản ghi audit</h3><p>Nhật ký sẽ xuất hiện sau khi có thao tác nghiệp vụ.</p></div>{% endif %}</section>
+{% endblock %}

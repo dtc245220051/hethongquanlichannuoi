@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Đàn & vật nuôi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><span class="eyebrow">Theo dõi đàn</span><h1>Đàn &amp; vật nuôi</h1><p>Mọi biến động số lượng được ghi qua service nghiệp vụ và có lịch sử.</p></div></section>
+<section class="panel">
+  <div class="panel-heading"><h2>Đàn đang theo dõi</h2></div>
+  <form method="get" class="filter-bar">
+    <label class="sr-only" for="livestock-search">Tìm kiếm</label>
+    <input id="livestock-search" name="q" value="{{ search }}" placeholder="Tìm tên đàn hoặc mã cá thể">
+    <select name="barn_id" aria-label="Lọc chuồng"><option value="">Tất cả chuồng</option>{% for barn in barns %}<option value="{{ barn.id }}" {% if barn_filter == barn.id %}selected{% endif %}>{{ display_labels.barns.get(barn.id, barn.name) }}</option>{% endfor %}</select>
+    <select name="species_code" aria-label="Lọc loài"><option value="">Tất cả loài</option>{% for item in species %}<option value="{{ item.code }}" {% if species_filter == item.code %}selected{% endif %}>{{ item.name_vi }}</option>{% endfor %}</select>
+    <select name="status" aria-label="Lọc trạng thái">{% for value,label in [('active','Đang theo dõi'),('inactive','Ngừng theo dõi'),('closed','Đàn đã đóng'),('deceased','Cá thể đã chết'),('sold','Cá thể đã bán')] %}<option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <button class="button button-secondary button-small">Lọc</button>
+  </form>
+  {% if herds %}
+  <div class="table-wrap"><table><thead><tr><th>Tên đàn</th><th>Loài</th><th>Chuồng</th><th>Số lượng hiện hành</th><th>Chưa định danh</th>{% if g.membership.role != 'veterinarian' %}<th>Thao tác</th>{% endif %}</tr></thead><tbody>
+  {% for herd in herds %}
+  <tr>
+    <td><a class="text-link" href="{{ url_for('web.livestock_detail', entity_type='herds', entity_id=herd.id) }}">{{ display_labels.herds.get(herd.id, herd.name) }}</a></td>
+    <td>{{ herd.species_code }}</td>
+    <td>{{ display_labels.barns.get(herd.barn_id, 'Chưa gán chuồng') if herd.barn_id else '—' }}</td>
+    <td>{{ herd.head_count }}</td><td>{{ herd.unidentified_count }}</td>
+    {% if g.membership.role != 'veterinarian' %}<td><div class="row-actions">
+      <form method="post" class="inline-form"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="update_herd"><input type="hidden" name="herd_id" value="{{ herd.id }}"><input name="name" value="{{ herd.name }}" aria-label="Tên đàn" required maxlength="160"><button class="button button-quiet button-small">Sửa tên</button></form>
+      <form method="post" class="inline-form"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="identify"><input type="hidden" name="herd_id" value="{{ herd.id }}"><input name="identifier" placeholder="Mã cá thể" aria-label="Mã cá thể" required maxlength="100"><input name="reason" placeholder="Lý do" aria-label="Lý do" required maxlength="500"><button class="button button-quiet button-small">Định danh 1 con</button></form>
+      <form method="post" class="inline-form"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="move_herd"><input type="hidden" name="herd_id" value="{{ herd.id }}"><select name="barn_id" aria-label="Chuồng đích"><option value="">Không gán chuồng</option>{% for barn in barns %}<option value="{{ barn.id }}" {% if barn.id == herd.barn_id %}selected{% endif %}>{{ display_labels.barns.get(barn.id, barn.name) }}</option>{% endfor %}</select><input name="reason" placeholder="Lý do chuyển" aria-label="Lý do chuyển" required maxlength="500"><button class="button button-quiet button-small">Chuyển chuồng</button></form>
+    </div></td>{% endif %}
+  </tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="empty-state"><span class="empty-icon">◉</span><h3>Chưa có đàn phù hợp bộ lọc</h3><p>Điều chỉnh bộ lọc hoặc ghi nhận đàn mới.</p></div>{% endif %}
+</section>
+<section class="panel">
+  <div class="panel-heading"><h2>Cá thể đang theo dõi</h2></div>
+  {% if animals %}
+  <div class="table-wrap"><table><thead><tr><th>Vật nuôi</th><th>Loài</th><th>Đàn</th><th>Chuồng</th>{% if g.membership.role != 'veterinarian' %}<th>Ghi nhận &amp; chỉnh sửa</th>{% endif %}</tr></thead><tbody>
+  {% for animal in animals %}
+  <tr>
+    <td><a class="text-link" href="{{ url_for('web.livestock_detail', entity_type='animals', entity_id=animal.id) }}">{{ display_labels.animals.get(animal.id, 'Vật nuôi') }}</a></td>
+    <td>{{ animal.species_code }}</td>
+    <td>{{ display_labels.herds.get(animal.herd_id, 'Đàn/lô') if animal.herd_id else 'Cá thể độc lập' }}</td>
+    <td>{{ display_labels.barns.get(animal.barn_id, 'Chuồng') if animal.barn_id else '—' }}</td>
+    {% if g.membership.role != 'veterinarian' %}<td><div class="row-actions">
+      <form method="post" class="inline-form"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="update_animal"><input type="hidden" name="animal_id" value="{{ animal.id }}"><input name="identifier" value="{{ animal.identifier or '' }}" placeholder="Mã" aria-label="Mã định danh" maxlength="100"><input name="display_name" value="{{ animal.display_name or '' }}" placeholder="Tên hiển thị" aria-label="Tên hiển thị" maxlength="160"><button class="button button-quiet button-small">Cập nhật</button></form>
+      <form method="post" class="inline-form"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="move_animal"><input type="hidden" name="animal_id" value="{{ animal.id }}"><select name="barn_id" aria-label="Chuồng đích"><option value="">Không gán chuồng</option>{% for barn in barns %}<option value="{{ barn.id }}" {% if barn.id == animal.barn_id %}selected{% endif %}>{{ display_labels.barns.get(barn.id, barn.name) }}</option>{% endfor %}</select><input name="reason" placeholder="Lý do chuyển" required maxlength="500"><button class="button button-quiet button-small">Chuyển</button></form>
+      <form method="post" class="inline-form"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="animal_status"><input type="hidden" name="animal_id" value="{{ animal.id }}"><select name="status"><option value="sold">Đã bán</option><option value="deceased">Đã chết</option></select><input name="reason" placeholder="Lý do" required maxlength="500"><button class="button button-quiet button-small">Ghi nhận</button></form>
+    </div></td>{% endif %}
+  </tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="empty-inline">Không có cá thể phù hợp bộ lọc.</div>{% endif %}
+</section>
+{% if g.membership.role != 'veterinarian' %}
+<section class="panel">
+  <div class="panel-heading"><div><span class="eyebrow">Biến động và chuyển đổi tracking</span><h2>Điều chỉnh số lượng · tách · gộp</h2></div></div>
+  <div class="workflow-grid">
+    <form method="post" class="form-stack">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="adjust_count">
+      <label>Đàn<select name="herd_id" required>{% for herd in herds %}<option value="{{ herd.id }}">{{ display_labels.herds.get(herd.id, herd.name) }}</option>{% endfor %}</select></label>
+      <label>Thay đổi số lượng (dương để tăng, âm để giảm)<input type="number" name="delta" step="1" required></label>
+      <label>Loại sự kiện<select name="event_type" required><option value="acquisition">Tiếp nhận (số dương)</option><option value="birth">Sinh mới (số dương)</option><option value="loss">Mất (số âm)</option><option value="sale">Bán (số âm)</option></select></label>
+      <label>Lý do<input name="reason" required maxlength="500"></label><button class="button button-primary">Ghi biến động</button>
+    </form>
+    <form method="post" class="form-stack">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="split_herd">
+      <label>Đàn nguồn<select name="source_herd_id" required>{% for herd in herds %}<option value="{{ herd.id }}">{{ display_labels.herds.get(herd.id, herd.name) }} · chưa định danh {{ herd.unidentified_count }}</option>{% endfor %}</select></label>
+      <label>Tên đàn mới<input name="target_name" required maxlength="160"></label><label>Số lượng tách<input type="number" name="heads" min="1" step="1" required></label>
+      <label>Chuồng đích (tùy chọn)<select name="target_barn_id"><option value="">Không gán chuồng</option>{% for barn in barns %}<option value="{{ barn.id }}">{{ display_labels.barns.get(barn.id, barn.name) }}</option>{% endfor %}</select></label>
+      <label>Lý do<input name="reason" required maxlength="500"></label><button class="button button-primary">Tách đàn</button>
+    </form>
+    <form method="post" class="form-stack">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="merge_herds">
+      <label>Đàn nguồn (sẽ đóng sau khi gộp)<select name="source_herd_id" required>{% for herd in herds %}<option value="{{ herd.id }}">{{ display_labels.herds.get(herd.id, herd.name) }}</option>{% endfor %}</select></label>
+      <label>Đàn đích<select name="target_herd_id" required>{% for herd in herds %}<option value="{{ herd.id }}">{{ display_labels.herds.get(herd.id, herd.name) }}</option>{% endfor %}</select></label>
+      <label>Lý do<input name="reason" required maxlength="500"></label><button class="button button-secondary">Gộp đàn</button>
+      <p class="form-hint">Tách chỉ áp dụng số lượng chưa định danh. Gộp yêu cầu cùng loài; nguồn sẽ đóng và lịch sử được giữ.</p>
+    </form>
+  </div>
+</section>
+<section class="form-grid-panels">
+  <section class="panel"><div class="panel-heading"><div><span class="eyebrow">Ghi nhận đàn</span><h2>Tạo đàn / lô</h2></div></div><form method="post" class="form-stack"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="create_herd"><label>Tên đàn<input name="name" required maxlength="160"></label><label>Loài<select name="species_code" required>{% for item in species %}<option value="{{ item.code }}">{{ item.name_vi }}</option>{% endfor %}</select></label><label>Số lượng ban đầu<input type="number" name="heads" min="1" required></label><label>Chuồng<select name="barn_id"><option value="">Chưa gán</option>{% for barn in barns %}<option value="{{ barn.id }}">{{ display_labels.barns.get(barn.id, barn.name) }}</option>{% endfor %}</select></label><label>Loại ghi nhận<select name="event_type"><option value="acquisition">Tiếp nhận</option><option value="birth">Sinh mới</option></select></label><label>Lý do<input name="reason" required maxlength="500"></label><button class="button button-primary">Tạo đàn</button></form></section>
+  <section class="panel"><div class="panel-heading"><div><span class="eyebrow">Ghi nhận cá thể</span><h2>Tạo cá thể mới</h2></div></div><form method="post" class="form-stack"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="create_animal"><label>Mã định danh<input name="identifier" maxlength="100"></label><label>Tên hiển thị<input name="display_name" maxlength="160"></label><label>Loài<select name="species_code" required>{% for item in species %}<option value="{{ item.code }}">{{ item.name_vi }}</option>{% endfor %}</select></label><label>Đàn<select name="herd_id"><option value="">Cá thể độc lập</option>{% for herd in herds %}<option value="{{ herd.id }}">{{ display_labels.herds.get(herd.id, herd.name) }}</option>{% endfor %}</select></label><label>Chuồng<select name="barn_id"><option value="">Theo đàn / chưa gán</option>{% for barn in barns %}<option value="{{ barn.id }}">{{ display_labels.barns.get(barn.id, barn.name) }}</option>{% endfor %}</select></label><label>Loại ghi nhận<select name="event_type"><option value="acquisition">Tiếp nhận</option><option value="birth">Sinh mới</option></select></label><label>Lý do<input name="reason" required maxlength="500"></label><button class="button button-primary">Tạo cá thể</button></form></section>
+</section>
+{% endif %}
+{% endblock %}
